@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+////////////////////
+/// ENUM
+////////////////////
+
+enum ClientStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+  NEQUI
+  DAVIPLATA
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+////////////////////
+/// MODELS
+////////////////////
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String?
+  role      UserRole @default(ADMIN)
+
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+
+  users    User[]
+  clients  Client[]
+  plans    Plan[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id        String       @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  status    ClientStatus @default(PENDING)
+
+  companyId String
+  company   Company      @relation(fields: [companyId], references: [id])
+
+  planId    String?
+  plan      Plan?        @relation(fields: [planId], references: [id])
+
+  payments  Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Plan {
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  interval  String   // monthly, yearly, etc.
+
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  clients   Client[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  amount    Float
+  status    PaymentStatus
+  method    PaymentMethod
+
+  clientId  String
+  client    Client        @relation(fields: [clientId], references: [id])
+
+  companyId String
+  company   Company       @relation(fields: [companyId], references: [id])
+
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+}
