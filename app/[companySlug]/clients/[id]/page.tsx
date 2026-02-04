@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClient } from "@/hooks/useClients";
 import { ClientStatusBadge, PlanBadge } from "@/components/ui/status-badge";
-import type { ClientStatus, Plan } from "@/lib/types";
+import { formatCurrency } from "@/lib/calculate";
+import type { Client, ClientDetailed, ClientStatus, Plan } from "@/lib/types";
 
 interface ClientDetailPageProps {
   params: Promise<{ id: string }>;
@@ -18,25 +19,52 @@ interface ClientDetailPageProps {
 
 export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const { id } = use(params);
-  const { client, loading, error, updateClientStatus, isAuthenticated } = useClient(id);
+  const [client, setClient] = useState<ClientDetailed>();
+  const [loading, setLoading] = useState<boolean>(true);
+  
+  const { updateClientStatus } = useClient(id);
+
+  useEffect(() => {
+    const fetchClient = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/clients/${id}`, {
+          headers: {
+            'Id': id
+          }
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch client data");
+        }
+        const data = await response.json();
+        setClient(data);
+      } catch (error) {
+        console.error("Error fetching client data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClient();
+  }, [id]);
+
 
   const handleStatusUpdate = async (newStatus: ClientStatus) => {
     await updateClientStatus(newStatus);
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Unauthorized</h1>
-          <p className="text-gray-600 mb-4">Please log in to view client details.</p>
-          <Link href="/login">
-            <Button>Go to Login</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // if (!isAuthenticated) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen">
+  //       <div className="text-center">
+  //         <h1 className="text-2xl font-bold text-gray-900 mb-4">Unauthorized</h1>
+  //         <p className="text-gray-600 mb-4">Please log in to view client details.</p>
+  //         <Link href="/login">
+  //           <Button>Go to Login</Button>
+  //         </Link>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (loading) {
     return (
@@ -65,53 +93,24 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
     );
   }
 
-  if (error) {
-    return (
-      <DashboardLayout title="Error" description="Failed to load client">
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </DashboardLayout>
-    );
-  }
-
-  if (!client) {
-    return (
-      <DashboardLayout title="Client Not Found" description="The requested client could not be found">
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-gray-600 mb-4">Client not found</p>
-            <Link href="/clients">
-              <Button>Back to Clients</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </DashboardLayout>
-    );
-  }
 
   return (
-    <DashboardLayout title={client.name} description={`Viewing ${client.name}'s profile`}>
+    <DashboardLayout title={client?.name || "Client Details"} description={`Viewing ${client?.name}'s profile`}>
       {/* Back Button */}
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/clients">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Clients
+            Volver
           </Link>
         </Button>
       </div>
 
       {/* Client Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="">
           <CardHeader>
-            <CardTitle>Client Information</CardTitle>
+            <CardTitle>Información de Cliente</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-4">
@@ -119,16 +118,16 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                 <User className="w-8 h-8 text-gray-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{client?.name}</h3>
                 <div className="text-sm text-gray-600 space-y-1">
                   <div className="flex items-center">
                     <Mail className="w-4 h-4 mr-2" />
-                    {client.email}
+                    {client?.email}
                   </div>
-                  {client.phone && (
+                  {client?.phone && (
                     <div className="flex items-center">
                       <Phone className="w-4 h-4 mr-2" />
-                      {client.phone}
+                      {client?.phone}
                     </div>
                   )}
                 </div>
@@ -137,12 +136,12 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">Status</label>
-                <ClientStatusBadge status={client.status} />
+                <label className="text-sm font-medium text-gray-700">Estado</label>
+                <ClientStatusBadge status={client?.status} />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Plan</label>
-                <PlanBadge plan={client.plan?.name || 'Basic'} />
+                <PlanBadge plan={client?.plan?.name || 'Basic'} />
               </div>
             </div>
 
@@ -150,104 +149,85 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
               <div>
                 <label className="text-sm font-medium text-gray-700">Client ID</label>
                 <p className="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded">
-                  {client.id}
+                  {client?.id}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Joined Date</label>
-                <p className="text-sm text-gray-900">{client.createdAt}</p>
+                <label className="text-sm font-medium text-gray-700">Fecha de Registro</label>
+                <p className="text-sm text-gray-900">{client?.createdAt}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Company Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Company Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Company Name</label>
-              <p className="text-sm text-gray-900">{client.company?.name}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Company Slug</label>
-              <p className="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded">
-                /{client.company?.slug}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Plan Information */}
-      <Card>
+      <Card className="">
         <CardHeader>
-          <CardTitle>Plan Details</CardTitle>
+          <CardTitle>Detalles del Plan</CardTitle>
         </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">Plan Name</label>
-                <p className="text-sm text-gray-900">{client.plan?.name}</p>
+                <label className="text-sm font-medium text-gray-700">Nombre del Plan</label>
+                <p className="text-sm text-gray-900">{client?.plan?.name}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Price</label>
+                <label className="text-sm font-medium text-gray-700">Precio</label>
                 <p className="text-sm text-gray-900 font-bold">
-                  ${client.plan?.price}/month
+                  {client?.plan?.price ? formatCurrency(client?.plan?.price) + "/month" : "N/A"}
                 </p>
               </div>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Billing Cycle</label>
-              <p className="text-sm text-gray-900">{client.plan?.interval}</p>
+              <p className="text-sm text-gray-900">{client?.plan?.interval}</p>
             </div>
           </CardContent>
         </Card>
 
       {/* Actions */}
-      <Card>
+      <Card className="col-span-2">
         <CardHeader>
-          <CardTitle>Actions</CardTitle>
+          <CardTitle>Acciones</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Update client status:</span>
+              <span className="text-sm text-gray-600">Actualizar estado del cliente:</span>
               <div className="flex space-x-2">
-                {client.status === 'ACTIVE' ? (
+                {client?.status === 'ACTIVE' ? (
                   <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleStatusUpdate('PENDING')}
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => handleStatusUpdate('PENDING')}
                   >
-                    Pause Client
+                    Pausar Subcripción
                   </Button>
                 ) : (
                   <Button 
-                    size="sm"
-                    onClick={() => handleStatusUpdate('ACTIVE')}
+                  size="sm"
+                  onClick={() => handleStatusUpdate('ACTIVE')}
                   >
-                    Activate Client
+                    Activar Subcripción
                   </Button>
                 )}
                 <Button 
                   size="sm" 
                   variant="destructive"
                   onClick={() => handleStatusUpdate('SUSPENDED')}
-                >
-                  Suspend
+                  >
+                  Suspender Subcripción
                 </Button>
               </div>
             </div>
             
             <div className="text-sm text-gray-600">
-              <p>Last updated: {client.updatedAt}</p>
+              <p>Last updated: {client?.updatedAt}</p>
             </div>
           </div>
         </CardContent>
       </Card>
+      </div>
     </DashboardLayout>
   );
 }

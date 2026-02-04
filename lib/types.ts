@@ -34,13 +34,14 @@ export interface ClientDetailed {
 
 export interface Payment {
   id: string;
-  clientId: string;
-  clientName: string;
   amount: number;
-  date: string;
+  clientId: string;
+  companyId: string;
+  createdAt: Date;
   method: PaymentMethod;
+  paidAt: Date | null;
   status: PaymentStatus;
-  description: string;
+  client: ClientDetailed;
 }
 
 export interface Activity {
@@ -67,7 +68,7 @@ export interface ChartDataPoint {
 export interface PlanDetailed {
   id: string;
   name: Plan;
-  price: number;
+  price: number; // Convertido desde Decimal para el frontend
   interval: string;
   companyId: string;
   createdAt: string;

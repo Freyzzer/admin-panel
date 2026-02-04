@@ -10,6 +10,9 @@ const prisma = new PrismaClient({
   adapter,
 });
 
+// Helper function to create Decimal from number
+const toDecimal = (value: number) => new Prisma.Decimal(value);
+
 async function main() {
   console.log("🌱 Seeding database...");
 
@@ -43,7 +46,7 @@ async function main() {
   const basicPlan = await prisma.plan.create({
     data: {
       name: "Basic",
-      price: 15,
+      price: toDecimal(15),
       interval: "monthly",
       companyId: company.id,
     },
@@ -52,7 +55,7 @@ async function main() {
   const proPlan = await prisma.plan.create({
     data: {
       name: "Pro",
-      price: 25,
+      price: toDecimal(25),
       interval: "monthly",
       companyId: company.id,
     },
@@ -61,7 +64,7 @@ async function main() {
   const premiumPlan = await prisma.plan.create({
     data: {
       name: "Premium",
-      price: 40,
+      price: toDecimal(40),
       interval: "monthly",
       companyId: company.id,
     },
@@ -102,9 +105,11 @@ async function main() {
           ? PaymentStatus.PENDING
           : PaymentStatus.PAID;
 
+      const amount = client.planId === premiumPlan.id ? 40 : client.planId === proPlan.id ? 25 : 15;
+
       await prisma.payment.create({
         data: {
-          amount: client.planId === premiumPlan.id ? 40 : client.planId === proPlan.id ? 25 : 15,
+          amount: toDecimal(amount),
           status,
           method: Object.values(PaymentMethod)[
             Math.floor(Math.random() * Object.values(PaymentMethod).length)

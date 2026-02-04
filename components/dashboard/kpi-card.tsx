@@ -17,9 +17,7 @@ interface KPICardProps {
 export function KPICard({
   title,
   value,
-  description,
   icon: Icon,
-  trend,
   className,
 }: KPICardProps) {
   return (
@@ -34,24 +32,6 @@ export function KPICard({
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        {(description || trend) && (
-          <div className="mt-1 flex items-center gap-2 text-xs">
-            {trend && (
-              <span
-                className={cn(
-                  "font-medium",
-                  trend.isPositive ? "text-success" : "text-destructive"
-                )}
-              >
-                {trend.isPositive ? "+" : ""}
-                {trend.value}%
-              </span>
-            )}
-            {description && (
-              <span className="text-muted-foreground">{description}</span>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   );

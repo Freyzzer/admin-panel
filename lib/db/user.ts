@@ -2,6 +2,25 @@
 import prisma from "../prisma";
 import { ClientStatus } from "@/app/generated/prisma/enums";
 
+export const getClientById = async (id:string) => {
+    try{
+        const data = await prisma.client.findUnique({
+            where: {
+                id: id
+            },
+            include: {
+                plan: true,
+                company: true
+            }
+        });
+        return data;
+    } catch (error) {
+        console.error("Error fetching client by ID:", error);
+        throw error;
+    }
+}
+
+
 export const getAllClientsByCompany = async (id:string) => {
     try{
         const data = await prisma.client.findMany({

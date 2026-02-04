@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search, Eye, Pencil, MoreHorizontal } from "lucide-react";
+import { Search, Eye, Pencil, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+
 import {
   Select,
   SelectContent,
@@ -35,11 +36,19 @@ import ClientsTableSkeleton from "./clients-table-skeleton";
 interface ClientsTableProps {
   clients: Client[];
   isLoading?: boolean;
+  slug: string;
 }
 
-export function ClientsTable({ clients, isLoading = false }: ClientsTableProps) {
+export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ClientStatus | "all">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Reset currentPage when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
 
   const filteredClients = useMemo(() => {
     return clients.filter((client) => {
@@ -51,6 +60,18 @@ export function ClientsTable({ clients, isLoading = false }: ClientsTableProps) 
       return matchesSearch && matchesStatus;
     });
   }, [clients, search, statusFilter]);
+
+  const paginatedClients = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredClients.slice(startIndex, endIndex);
+  }, [filteredClients, currentPage]);
+
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   if (isLoading) {
     return <ClientsTableSkeleton />;
@@ -98,7 +119,6 @@ export function ClientsTable({ clients, isLoading = false }: ClientsTableProps) 
                 <TableHead>Client</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Plan</TableHead>
-                <TableHead className="hidden md:table-cell">Company</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -123,8 +143,8 @@ export function ClientsTable({ clients, isLoading = false }: ClientsTableProps) 
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredClients.map((client) => (
+               ) : (
+                 paginatedClients.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -147,12 +167,9 @@ export function ClientsTable({ clients, isLoading = false }: ClientsTableProps) 
                     <TableCell>
                       <ClientStatusBadge status={client.status} />
                     </TableCell>
-                    <TableCell>
-                      <PlanBadge plan={client.plan.name} />
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {client.company.name}
-                    </TableCell>
+    <TableCell>
+      <PlanBadge plan={client.plan.name} />
+    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -163,7 +180,7 @@ export function ClientsTable({ clients, isLoading = false }: ClientsTableProps) 
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/clients/${client.id}`}>
+                            <Link href={`/${slug}/clients/${client.id}`}>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </Link>
@@ -182,9 +199,48 @@ export function ClientsTable({ clients, isLoading = false }: ClientsTableProps) 
           </Table>
         </div>
         {filteredClients.length > 0 && (
-          <div className="mt-4 text-sm text-muted-foreground">
-            Showing {filteredClients.length} of {clients.length} clients
-          </div>
+          <>
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {paginatedClients.length} of {filteredClients.length} clients
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(page)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

@@ -99,7 +99,7 @@ model Client {
 model Plan {
   id        String   @id @default(cuid())
   name      String
-  price     Float
+  price     Decimal  @db.Decimal(10, 2)
   interval  String   // monthly, yearly, etc.
 
   companyId String
@@ -113,7 +113,7 @@ model Plan {
 
 model Payment {
   id        String        @id @default(cuid())
-  amount    Float
+  amount    Decimal       @db.Decimal(10, 2)
   status    PaymentStatus
   method    PaymentMethod
 

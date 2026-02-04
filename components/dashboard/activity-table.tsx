@@ -1,73 +1,59 @@
-import Link from "next/link";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { Activity } from "@/lib/types";
-import { formatDateTime } from "@/lib/mock-data";
+import type { Payment } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { PlanBadge } from "../ui/status-badge";
+import { useAuthStore } from "@/store/auth-store";
 
-interface ActivityTableProps {
-  activities: Activity[];
-}
 
-export function ActivityTable({ activities }: ActivityTableProps) {
+
+export function RecentPaymentsTable() {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const user = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const response = await fetch('/api/payments', {
+          headers: {
+            'companyId': user?.company.id || '', 
+          }
+        });
+
+        if (!response.ok) {
+          console.error('Failed to fetch recent payments');
+          return;
+        }
+
+        const data = await response.json();
+        const sortPayments = data.sort((a: Payment, b: Payment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());  
+        const sortPaidPayments = sortPayments.filter((payment: Payment) => payment.status === 'PAID');
+        
+        setPayments(sortPaidPayments.slice(0, 5)); 
+      } catch (error) {
+        console.error('Error fetching recent payments:', error);
+      }
+    }
+    fetchPayments();
+  }, [user]);
+
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
+        <CardTitle className="text-base font-semibold">Pagos Recientes</CardTitle>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Client</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead className="text-right">Time</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {activities.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                  No recent activity
-                </TableCell>
-              </TableRow>
-            ) : (
-              activities.map((activity) => (
-                <TableRow key={activity.id}>
-                  <TableCell>
-                    <Link
-                      href={`/clients/${activity.clientId}`}
-                      className="flex items-center gap-3 hover:underline"
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {activity.clientName
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{activity.clientName}</span>
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {activity.action}
-                  </TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">
-                    {formatDateTime(activity.timestamp)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <CardContent className="h-full flex flex-col gap-4">
+        {payments.map((payment) => (
+          <section key={payment.id} className="flex items-center justify-between">
+            <div>
+              <p>{payment.client.name}</p>
+              <PlanBadge plan={payment.client.plan?.name} />
+            </div>
+            <div>
+              <p>{payment.paidAt ? new Date(payment.paidAt).toLocaleDateString() : 'Sin fecha de pago'}</p>
+            </div>
+          </section>
+        ) )}
       </CardContent>
     </Card>
   );

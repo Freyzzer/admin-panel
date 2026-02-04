@@ -43,11 +43,11 @@ const paymentStatusConfig: Record<
 };
 
 interface ClientStatusBadgeProps {
-  status: ClientStatus;
+  status: ClientStatus | undefined;
 }
 
 export function ClientStatusBadge({ status }: ClientStatusBadgeProps) {
-  const config = clientStatusConfig[status];
+  const config = clientStatusConfig[status || "PENDING"];
   return (
     <Badge variant="outline" className={cn("font-medium", config.className)}>
       {config.label}
@@ -69,7 +69,7 @@ export function PaymentStatusBadge({ status }: PaymentStatusBadgeProps) {
 }
 
 interface PlanBadgeProps {
-  plan: "Basic" | "Pro" | "Premium";
+  plan: "Basic" | "Pro" | "Premium" | null | undefined;
 }
 
 const planConfig: Record<string, { label: string; className: string }> = {
@@ -85,10 +85,18 @@ const planConfig: Record<string, { label: string; className: string }> = {
     label: "Premium",
     className: "bg-chart-1/10 text-chart-1",
   },
+  null: {
+    label: "Basic",
+    className: "bg-secondary text-secondary-foreground",
+  },
+  undefined: {
+    label: "Basic",
+    className: "bg-secondary text-secondary-foreground",
+  },
 };
 
 export function PlanBadge({ plan }: PlanBadgeProps) {
-  const config = planConfig[plan];
+  const config = planConfig[plan || "Basic"];
   return (
     <Badge variant="secondary" className={cn("font-medium", config.className)}>
       {config.label}

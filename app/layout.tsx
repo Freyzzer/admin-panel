@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { Geist } from 'next/font/google'
+ 
+const geist = Geist({
+  subsets: ['latin'],
+})
 
 export const metadata: Metadata = {
   title: 'Admin CRM Dashboard',
@@ -31,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
+    <html lang="en" className={geist.className}>
+      <body >
         {children}
         <Analytics />
       </body>

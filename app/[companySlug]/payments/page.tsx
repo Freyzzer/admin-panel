@@ -14,7 +14,6 @@ export default function PaymentsPage({
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const user = useAuthStore((state) => state.user);
-  console.log('payments', user);
   
   useEffect(() => {
     const fetchPayments = async () => {
@@ -32,15 +31,15 @@ export default function PaymentsPage({
         }
 
         const data = await response.json();
-        console.log('Fetched payments:', data);
         setPayments(data);
       } catch (error) {
         console.error('Error fetching payments:', error);
-      } finally{
+      } finally {
         setIsLoading(false);
-    }
+      }
+    };
     fetchPayments();
-  }}, [user]);
+  }, [user]);
 
   return (
     <DashboardLayout title="Payments" description="Track and manage all payment transactions">

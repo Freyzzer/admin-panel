@@ -117,21 +117,6 @@ export default function ProfilePage() {
                   En cualquier componente:
                 </h3>
                 <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-{`const { user, company, loading, error } = useAuth();
-
-// Usuario actual
-console.log(user?.name);    // "Admin User"
-console.log(user?.email);   // "admin@demo.com"
-console.log(user?.role);    // "ADMIN"
-
-// Empresa actual
-console.log(company?.name);  // "Demo Company"
-console.log(company?.slug);  // "demo-company"
-
-// Estado
-console.log(loading);       // false cuando termina de cargar
-console.log(error);         // null si no hay error
-console.log(user && company); // true si está autenticado`}
                 </pre>
               </div>
             </section>

@@ -11,7 +11,6 @@ export default function ClientsPage() {
   const [dataClients, setDataClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const user = useAuthStore((s) => s.user);
-  console.log('data', dataClients);
   
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export default function ClientsPage() {
   
   return (
     <DashboardLayout title="Clients" description="Manage your client relationships">
-      <ClientsTable clients={dataClients} isLoading={isLoading} />
+      <ClientsTable clients={dataClients} isLoading={isLoading} slug={user?.company.slug || ''} />
     </DashboardLayout>
   );
 }
