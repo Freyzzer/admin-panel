@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     if(payments){
         payments.forEach(payment => {
           const date = payment.paidAt!;
-          const monthLabel = date.toLocaleString("en-US", { month: "short" });
+          const monthLabel = date.toLocaleString("es-CO", { month: "short" });
           const year = date.getFullYear();
           const key = `${year}-${date.getMonth()}`;
     
