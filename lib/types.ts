@@ -109,3 +109,13 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
 }
+
+export interface PlanDetailed{
+  id: string;
+  companyId: string;
+  createdAt: string;
+  interval: string;
+  name: Plan;
+  amount: number;
+  updatedAt: string;
+}

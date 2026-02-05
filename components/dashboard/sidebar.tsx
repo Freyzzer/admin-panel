@@ -40,6 +40,11 @@ export function Sidebar() {
     href: `${user?.company ? `/${user.company.slug}/payments` : '/payments'}`,
     icon: CreditCard,
   },
+  {
+    title: "Plans",
+    href: `${user?.company ? `/${user.company.slug}/services` : '/services'}`,
+    icon: Settings,
+  },
 ];
 
   return (
