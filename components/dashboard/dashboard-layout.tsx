@@ -23,7 +23,7 @@ export function DashboardLayout({
   useEffect(() => {
     fetch("/api/me", { credentials: "include" })
       .then((res) => res.ok ? res.json() : null)
-      .then((user) => setUser(user))
+      .then((data) => setUser(data?.user || null))
   }, [])
 
   return (

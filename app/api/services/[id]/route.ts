@@ -1,7 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+export const runtime = 'nodejs';
 
+import { getAuthPayload } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { DeletePlan, UpdatePlan } from "@/lib/db/plan";
 
 export async function PUT(request: NextRequest) {
+  const auth = await getAuthPayload(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -29,6 +36,10 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await getAuthPayload(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -51,11 +62,5 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-function UpdatePlan(id: string, name: any, interval: any, price: any) {
-    throw new Error("Function not implemented.");
-}
 
-function DeletePlan(id: string) {
-    throw new Error("Function not implemented.");
-}
 

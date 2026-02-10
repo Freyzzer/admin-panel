@@ -50,7 +50,7 @@ export function useAuth() {
 
       const data = await response.json();
       setUser(data.user);
-      setCompany(data.company);
+      setCompany(data.user?.company || null);
     } catch (error) {
       console.error('Error fetching user data:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');

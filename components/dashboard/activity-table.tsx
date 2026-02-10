@@ -47,7 +47,7 @@ export function RecentPaymentsTable() {
           <section key={payment.id} className="flex items-center justify-between">
             <div>
               <p>{payment.client.name}</p>
-              <PlanBadge plan={payment.client.plan?.name} />
+              <PlanBadge plan={payment.client.plan?.name as any} />
             </div>
             <div>
               <p>{payment.paidAt ? new Date(payment.paidAt).toLocaleDateString() : 'Sin fecha de pago'}</p>

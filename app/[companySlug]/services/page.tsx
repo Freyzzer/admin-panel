@@ -29,11 +29,7 @@ export default function ServicesPage() {
     const fetchServices = async () => {
       try {
         console.log(user);
-        const response = await fetch("/api/services", {
-          headers: {
-            companyId: user?.company.id || "1",
-          },
-        });
+        const response = await fetch("/api/services");
         if (!response.ok) {
           console.error("Failed to fetch services");
           return;
@@ -51,9 +47,6 @@ export default function ServicesPage() {
     try {
       const response = await fetch(`/api/services/${id}`, {
         method: "DELETE",
-        headers: {
-          companyId: user?.company.id || "1",
-        },
       });
       if (!response.ok) {
         throw new Error("Failed to delete service");
@@ -82,8 +75,7 @@ export default function ServicesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
-          companyId: user?.company.id || "1",
+          ...data
         }),
       });
     }
@@ -93,8 +85,8 @@ export default function ServicesPage() {
 
   return (
     <DashboardLayout
-      title="Servicios"
-      description="Manage your client relationships"
+title="Planes"
+      description="Gestiona tus planes de servicio y precios"
     >
       <ServicesTable
         services={services}
