@@ -1,53 +1,54 @@
-import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { PaymentStatus } from "@/app/generated/prisma/enums";
+import { NextResponse, NextRequest } from "next/server";
 import { getMonthly } from "@/lib/db/payments";
+import { getAuthPayload } from "@/lib/auth";
 
+export async function GET(req: NextRequest) {
+  const auth = await getAuthPayload(req);
+  if (!auth) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-export async function GET(req: Request) {
   try {
-    const companyId = req.headers.get("companyId");
-
-    if (!companyId) {
-      return NextResponse.json(
-        { error: "companyId is required" },
-        { status: 400 }
-      );
-    }
-
-    // Fecha desde hace 6 meses
+    // Desde el inicio del mes de hace 5 meses (6 meses contando el actual)
     const fromDate = new Date();
     fromDate.setMonth(fromDate.getMonth() - 5);
     fromDate.setDate(1);
+    fromDate.setHours(0, 0, 0, 0);
 
-    const payments = await getMonthly(req.headers.get('companyId') || '')
-    console.log('payment', payments);
-    
+    const payments = await getMonthly(auth.companyId);
 
     const grouped: Record<
       string,
       { month: string; revenue: number; payments: number; order: number }
     > = {};
 
-    if(payments){
-        payments.forEach(payment => {
-          const date = payment.paidAt!;
-          const monthLabel = date.toLocaleString("es-CO", { month: "short" });
-          const year = date.getFullYear();
-          const key = `${year}-${date.getMonth()}`;
-    
-          if (!grouped[key]) {
-            grouped[key] = {
-              month: monthLabel,
-              revenue: 0,
-              payments: 0,
-              order: date.getTime()
-            };
-          }
-    
-          grouped[key].revenue += Number(payment.amount);
-          grouped[key].payments += 1;
+    if (payments) {
+      payments.forEach(payment => {
+        const date = payment.paidAt;
+        if (!date) return;
+
+        if (date < fromDate) return;
+
+        const monthLabel = date.toLocaleString("es-CO", {
+          month: "short",
         });
+
+        const year = date.getFullYear();
+        const monthIndex = date.getMonth(); 
+        const key = `${year}-${monthIndex}`;
+
+        if (!grouped[key]) {
+          grouped[key] = {
+            month: monthLabel,
+            revenue: 0,
+            payments: 0,
+            order: new Date(year, monthIndex, 1).getTime(),
+          };
+        }
+
+        grouped[key].revenue += Number(payment.amount);
+        grouped[key].payments += 1;
+      });
     }
 
     const chartData = Object.values(grouped)
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
       .map(({ month, revenue, payments }) => ({
         month,
         revenue,
-        payments
+        payments,
       }));
 
     return NextResponse.json(chartData);

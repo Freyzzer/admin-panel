@@ -1,11 +1,19 @@
+export const runtime = 'nodejs';
+
+import { getAuthPayload } from '@/lib/auth';
 import { getClientById } from '@/lib/db/user';
-import { get } from 'http';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await getAuthPayload(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
   try {
-    const clientId = params.id; 
-    const data = await getClientById(request.headers.get('Id') || '');
+    const resolvedParams = await params;
+    console.log('Fetching client with ID:', resolvedParams.id);
+    const data = await getClientById(resolvedParams.id);
+    console.log('Client data:', data);
 
     if (!data) {
       return NextResponse.json(
@@ -17,8 +25,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
     catch (error) { 
     console.error('Error fetching client by ID:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack available');
     return NextResponse.json(
-      { error: 'Error al obtener el cliente' },
+      { error: 'Error al obtener el cliente', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

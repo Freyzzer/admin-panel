@@ -1,20 +1,18 @@
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from "next/server";
-import { CreatePlan, DeletePlan, getAllPlanByCompany, UpdatePlan } from "@/lib/db/plan";
+import { CreatePlan,  getAllPlanByCompany } from "@/lib/db/plan";
+import { getAuthPayload } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await getAuthPayload(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
   try {
-    const companyId = request.headers.get("companyId");
+    const plans = await getAllPlanByCompany(auth.companyId);
 
-    if (!companyId) {
-      return NextResponse.json(
-        { error: "companyId es requerido" },
-        { status: 400 }
-      );
-    }
-
-    const plans = await getAllPlanByCompany(companyId);
-
-    return NextResponse.json(plans);
+    return NextResponse.json(plans, { status: 200 });
   } catch (error) {
     console.error("Error fetching plans:", error);
     return NextResponse.json(
@@ -25,75 +23,28 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await getAuthPayload(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
   try {
     const body = await request.json();
-    const { name, interval, price, companyId } = body;
+    const { name, interval, price } = body;
 
-    if (!name || !interval || !price || !companyId) {
+    if (!name || !interval || !price) {
       return NextResponse.json(
         { error: "Faltan campos requeridos" },
         { status: 400 }
       );
     }
 
-    const plan = await CreatePlan(name, interval, price, companyId);
+    const plan = await CreatePlan(name, interval, price, auth.companyId);
 
     return NextResponse.json(plan, { status: 201 });
   } catch (error) {
     console.error("Error creating plan:", error);
     return NextResponse.json(
       { error: "Error al crear el plan" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "id es requerido" },
-        { status: 400 }
-      );
-    }
-
-    const body = await request.json();
-    const { name, interval, price } = body;
-
-    const plan = await UpdatePlan(id, name, interval, price);
-
-    return NextResponse.json(plan);
-  } catch (error) {
-    console.error("Error updating plan:", error);
-    return NextResponse.json(
-      { error: "Error al actualizar el plan" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "id es requerido" },
-        { status: 400 }
-      );
-    }
-
-    const plan = await DeletePlan(id);
-
-    return NextResponse.json(plan);
-  } catch (error) {
-    console.error("Error deleting plan:", error);
-    return NextResponse.json(
-      { error: "Error al eliminar el plan" },
       { status: 500 }
     );
   }

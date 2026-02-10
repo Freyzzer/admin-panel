@@ -20,13 +20,15 @@ export default function CompanyDashboardPage({
 }) {
   const [dataClients, setDataClients] = useState<Client[]>([]);
   const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false);
   const [Revenue, setRevenue] = useState(0)
   const user = useAuthStore((s) => s.user);
-
+  console.log('user', user);
+  
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        // setIsLoading(true);
+        setIsLoading(true);
         
         const response = await fetch('/api/clients', {
           headers: {
@@ -44,7 +46,7 @@ export default function CompanyDashboardPage({
       } catch (error) {
         console.error('Error fetching clients:', error);
       }finally{
-        // setIsLoading(false);
+        setIsLoading(false);
       }
     }
     fetchClients();
@@ -86,11 +88,7 @@ export default function CompanyDashboardPage({
   useEffect(() => {
     const fetchMontlyRevenue = async () => {
       try {
-        const response = await fetch('/api/metrics/monthlyRevenue', {
-          headers: {
-            'companyId': user?.company.id || '1'
-          }
-        })
+        const response = await fetch('/api/metrics/monthlyRevenue');
         
         if (!response.ok) {
           console.error('Failed to fetch clients');
@@ -114,28 +112,40 @@ export default function CompanyDashboardPage({
     setRevenue(Revenue || 0)
   },[monthlyRevenue])
 
+if (!user || !user.company) {
+  return (
+    <DashboardLayout title="Dashboard" description="Cargando información de la empresa...">
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+          <p className="text-muted-foreground">Cargando datos de la empresa...</p>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
 
   return (
     <DashboardLayout title="Dashboard" description={`Overview of ${user?.company.slug} business metrics`}>
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
-          title="Total Clients"
+          title="Total de Clientes"
           value={kpiData.totalClients}
           icon={Users}
         />
         <KPICard
-          title="Active Clients"
+          title="Clientes Activos"
           value={kpiData.activeClients}
           icon={UserCheck}
         />
         <KPICard
-          title="Pending Payments"
+          title="Pagos Pendientes"
           value={kpiData.pendingPayments}
           icon={Clock}
         />
         <KPICard
-          title="Monthly Revenue"
+          title="Ingresos Mensuales"
           value={formatCurrency(Number(Revenue))}
           icon={DollarSign}
         />
