@@ -17,11 +17,7 @@ export default function ClientsPage() {
     const fetchClients = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/clients', {
-          headers: {
-            'companyId': user?.company.id || '1' 
-          }
-        });
+        const response = await fetch('/api/clients');
 
         if (!response.ok) {
           console.error('Failed to fetch clients');
@@ -40,7 +36,7 @@ export default function ClientsPage() {
   }, [user]);
   
   return (
-    <DashboardLayout title="Clients" description="Manage your client relationships">
+    <DashboardLayout title="Clientes" description="Gestiona las relaciones con tus clientes">
       <ClientsTable clients={dataClients} isLoading={isLoading} slug={user?.company.slug || ''} />
     </DashboardLayout>
   );

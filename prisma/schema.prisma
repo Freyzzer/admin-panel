@@ -51,7 +51,7 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  password  String?
+  password  String
   role      UserRole @default(ADMIN)
 
   companyId String
@@ -78,7 +78,7 @@ model Company {
 model Client {
   id        String       @id @default(cuid())
   name      String
-  email     String
+  email     String   @unique
   phone     String?
   status    ClientStatus @default(PENDING)
 
@@ -106,6 +106,7 @@ model Plan {
   company   Company  @relation(fields: [companyId], references: [id])
 
   clients   Client[]
+  @@unique([companyId, name])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

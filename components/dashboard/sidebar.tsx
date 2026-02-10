@@ -26,19 +26,24 @@ export function Sidebar() {
 
   const navItems = [
   {
-    title: "Dashboard",
+    title: "Panel Principal",
     href: `${user?.company ? `/${user.company.slug}/` : '/dashboard'}`,
     icon: LayoutDashboard,
   },
   {
-    title: "Clients",
+    title: "Clientes",
     href: `${user?.company ? `/${user.company.slug}/clients` : '/clients'}`,
     icon: Users,
   },
   {
-    title: "Payments",
+    title: "Pagos",
     href: `${user?.company ? `/${user.company.slug}/payments` : '/payments'}`,
     icon: CreditCard,
+  },
+  {
+    title: "Planes",
+    href: `${user?.company ? `/${user.company.slug}/services` : '/services'}`,
+    icon: Settings,
   },
 ];
 
@@ -64,7 +69,7 @@ export function Sidebar() {
                   CRM
                 </span>
               </div>
-              <span className="text-lg font-semibold">AdminPanel</span>
+              <span className="text-lg font-semibold">Panel de Administración</span>
             </Link>
           )}
           <Button

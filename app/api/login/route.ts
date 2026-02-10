@@ -1,79 +1,44 @@
+export const runtime = 'nodejs';
+
 import prisma from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import { SignJWT } from 'jose';
 
-
-// Simple password verification
-async function verifyPassword(password: string, hashedPassword: string | null): Promise<boolean> {
-  // For demo purposes, just compare plain text
-  // In production, use proper bcrypt comparison
-  return password === hashedPassword;
-}
-
-// Simple token generation (in production, use JWT)
-function generateToken(userId: string, companyId: string): string {
-  const payload = {
-    userId,
-    companyId,
-    timestamp: Date.now(),
-    // Token expires in 24 hours
-    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
-  };
-  
-  // Simple base64 encoding (in production, use proper JWT)
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
-}
+const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    // Validate input
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email y contraseña son requeridos' },
-        { status: 400 }
-      );
-    }
-
-    // Find user in mock data
     const user = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        password: true, 
-        role: true,
-        companyId: true,
-        company: {
-          select: {
-            slug: true,
-          },
-        },
-      },
+      include: { company: true },
     });
 
-    if (!user) {
+    if (!user || !user.password) {
       return NextResponse.json(
         { error: 'Credenciales inválidas' },
         { status: 401 }
       );
     }
 
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password);
+    
+    const isValid = await bcrypt.compare(password, user.password);
 
-    if (!isValidPassword) {
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'Credenciales inválidas' },
+        { error: 'Credenciales inválidas 3' },
         { status: 401 }
       );
     }
 
-    // Generate token
-    const token = generateToken(user.id, user.companyId);
+    const token = await new SignJWT({ sub: user.id, companyId: user.companyId, role: user.role })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(secret);
 
-    // Create response and set cookie
     const response = NextResponse.json({
       token,
       user: {
@@ -85,18 +50,16 @@ export async function POST(request: NextRequest) {
       },
       companySlug: user.company.slug
     });
-    
-    // Set auth token cookie
+
     response.cookies.set('auth-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60, // 24 hours
+      maxAge: 24 * 60 * 60,
       path: '/'
     });
-    
-    return response;
 
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

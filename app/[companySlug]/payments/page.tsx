@@ -19,11 +19,7 @@ export default function PaymentsPage({
     const fetchPayments = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/payments', {
-          headers: {
-            'companyId': user?.company.id || '', 
-          }
-        });
+        const response = await fetch('/api/payments');
 
         if (!response.ok) {
           console.error('Failed to fetch payments');
@@ -42,7 +38,7 @@ export default function PaymentsPage({
   }, [user]);
 
   return (
-    <DashboardLayout title="Payments" description="Track and manage all payment transactions">
+    <DashboardLayout title="Pagos" description="Seguimiento y gestión de todas las transacciones de pago">
       <PaymentsTable payments={payments} isLoading={isLoading} />
     </DashboardLayout>
   );

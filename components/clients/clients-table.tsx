@@ -2,10 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search, Eye, Pencil, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Eye, Pencil, MoreHorizontal, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
 import {
   Select,
   SelectContent,
@@ -31,6 +30,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientStatusBadge, PlanBadge } from "@/components/ui/status-badge";
 import type { Client, ClientStatus } from "@/lib/types";
+import { ClientFilters, type ClientFiltersState } from "./client-filters";
 import ClientsTableSkeleton from "./clients-table-skeleton";
 
 interface ClientsTableProps {
@@ -40,26 +40,48 @@ interface ClientsTableProps {
 }
 
 export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableProps) {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ClientStatus | "all">("all");
+  const [filters, setFilters] = useState<ClientFiltersState>({
+    search: "",
+    status: "all",
+    planId: "all",
+    registrationDateRange: { from: "", to: "" },
+    planPriceRange: { min: "", max: "" },
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   // Reset currentPage when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [filters.search, filters.status, filters.planId, filters.registrationDateRange, filters.planPriceRange]);
 
   const filteredClients = useMemo(() => {
     return clients.filter((client) => {
-      const matchesSearch =
-        client.name.toLowerCase().includes(search.toLowerCase()) ||
-        client.email.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus =
-        statusFilter === "all" || client.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      // Búsqueda
+      const matchesSearch = !filters.search || 
+        client.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+        client.email.toLowerCase().includes(filters.search.toLowerCase());
+
+      // Estado
+      const matchesStatus = filters.status === "all" || client.status === filters.status;
+
+      // Plan
+      const matchesPlan = filters.planId === "all" || client.plan.name === filters.planId;
+
+      // Rango de fechas de registro
+      const clientDate = new Date(client.createdAt);
+      const matchesDateRange = (!filters.registrationDateRange.from && !filters.registrationDateRange.to) ||
+        (clientDate >= new Date(filters.registrationDateRange.from || '1900-01-01') && 
+         clientDate <= new Date(filters.registrationDateRange.to || '2100-12-31'));
+
+      // Rango de precios
+      const matchesPriceRange = (!filters.planPriceRange.min && !filters.planPriceRange.max) ||
+        (client.plan.price >= Number(filters.planPriceRange.min || 0) && 
+         client.plan.price <= Number(filters.planPriceRange.max || Infinity));
+
+      return matchesSearch && matchesStatus && matchesPlan && matchesDateRange && matchesPriceRange;
     });
-  }, [clients, search, statusFilter]);
+  }, [clients, filters]);
 
   const paginatedClients = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -73,136 +95,143 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
     setCurrentPage(page);
   };
 
+  const handleFiltersChange = (newFilters: ClientFiltersState) => {
+    setFilters(newFilters);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      search: "",
+      status: "all",
+    planId: "all",
+      registrationDateRange: { from: "", to: "" },
+      planPriceRange: { min: "", max: "" },
+    });
+  };
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (filters.search) count++;
+    if (filters.status !== "all") count++;
+    if (filters.planId !== "all") count++;
+    if (filters.registrationDateRange.from || filters.registrationDateRange.to) count++;
+    if (filters.planPriceRange.min || filters.planPriceRange.max) count++;
+    return count;
+  };
+
   if (isLoading) {
     return <ClientsTableSkeleton />;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-lg font-semibold">All Clients</CardTitle>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by name or email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 sm:w-64"
-              />
-            </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as ClientStatus | "all")}
-            >
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+    <div className="space-y-4">
+      {/* Componente de Filtros */}
+      <ClientFilters
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        onReset={handleResetFilters}
+        activeFiltersCount={getActiveFiltersCount()}
+      />
+
+      {/* Tabla de Clientes */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-lg font-semibold">Todos los Clientes</CardTitle>
+            <Button onClick={() => window.location.href = `/${slug}/clients/new`} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Nuevo Cliente
+            </Button>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClients.length === 0 ? (
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <span>No clients found</span>
-                      {(search || statusFilter !== "all") && (
-                        <Button
-                          variant="link"
-                          onClick={() => {
-                            setSearch("");
-                            setStatusFilter("all");
-                          }}
-                          className="h-auto p-0"
-                        >
-                          Clear filters
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-               ) : (
-                 paginatedClients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {client.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{client.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {client.email}
-                          </div>
-                        </div>
+              </TableHeader>
+              <TableBody>
+                {filteredClients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <span>No se encontraron clientes con los filtros aplicados</span>
+                        <Button
+                            variant="link"
+                            onClick={handleResetFilters}
+                            className="h-auto p-0"
+                        >
+                          Limpiar filtros
+                        </Button>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <ClientStatusBadge status={client.status} />
-                    </TableCell>
-    <TableCell>
-      <PlanBadge plan={client.plan.name} />
-    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/${slug}/clients/${client.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit Client
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        {filteredClients.length > 0 && (
-          <>
+                ) : (
+                 paginatedClients.map((client) => (
+                   <TableRow key={client.id}>
+                     <TableCell>
+                       <div className="flex items-center gap-3">
+                         <Avatar className="h-9 w-9">
+                           <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                             {client.name
+                               .split(" ")
+                               .map((n) => n[0])
+                               .join("")}
+                           </AvatarFallback>
+                         </Avatar>
+                         <div>
+                           <div className="font-medium">{client.name}</div>
+                           <div className="text-sm text-muted-foreground">
+                             {client.email}
+                           </div>
+                         </div>
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       <ClientStatusBadge status={client.status} />
+                     </TableCell>
+                     <TableCell>
+                       <PlanBadge plan={client.plan?.name} />
+                     </TableCell>
+                     <TableCell className="text-right">
+                       <DropdownMenu>
+                         <DropdownMenuTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-8 w-8">
+                             <MoreHorizontal className="h-4 w-4" />
+                             <span className="sr-only">Open menu</span>
+                           </Button>
+                         </DropdownMenuTrigger>
+                         <DropdownMenuContent align="end">
+                           <DropdownMenuItem asChild>
+                             <Link href={`/${slug}/clients/${client.id}`}>
+                               <Eye className="mr-2 h-4 w-4" />
+                               Ver Detalles
+                             </Link>
+                           </DropdownMenuItem>
+                           <DropdownMenuItem>
+                             <Pencil className="mr-2 h-4 w-4" />
+                             Editar Cliente
+                           </DropdownMenuItem>
+                         </DropdownMenuContent>
+                       </DropdownMenu>
+                     </TableCell>
+                   </TableRow>
+                 ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Paginación */}
+          {filteredClients.length > 0 && (
             <div className="mt-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Showing {paginatedClients.length} of {filteredClients.length} clients
+                    Mostrando {paginatedClients.length} de {filteredClients.length} clientes
               </div>
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
@@ -213,7 +242,7 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Previous
+                    Anterior
                   </Button>
                   <div className="flex items-center gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -234,16 +263,15 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
                     onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
                   >
-                    Next
+                    Siguiente
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               )}
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
-

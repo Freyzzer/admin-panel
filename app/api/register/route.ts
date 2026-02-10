@@ -1,48 +1,13 @@
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from 'next/server';
+import  prisma  from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
+import { SignJWT } from 'jose';
 
-// Mock companies for demo purposes
-let mockCompanies = [
-  {
-    id: '1',
-    name: 'Demo Company',
-    slug: 'demo-company',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
+const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
-// Mock users for demo purposes  
-let mockUsers = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@demo.com',
-    password: 'admin123', // In production, this should be hashed
-    role: 'ADMIN',
-    companyId: '1',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '2',
-    name: 'Staff User', 
-    email: 'staff@demo.com',
-    password: 'staff123', // In production, this should be hashed
-    role: 'STAFF',
-    companyId: '1',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
-
-// Simple password hashing (in production, use bcrypt)
-async function hashPassword(password: string): Promise<string> {
-  // For demo purposes, just return plain text
-  // In production, use proper bcrypt hashing
-  return password;
-}
-
-// Simple slug generation
+// Slug simple para la empresa
 function generateSlug(name: string): string {
   return name
     .toLowerCase()
@@ -52,25 +17,10 @@ function generateSlug(name: string): string {
     .trim();
 }
 
-// Simple token generation (in production, use JWT)
-function generateToken(userId: string, companyId: string): string {
-  const payload = {
-    userId,
-    companyId,
-    timestamp: Date.now(),
-    // Token expires in 24 hours
-    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
-  };
-  
-  // Simple base64 encoding (in production, use proper JWT)
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, companyName } = await request.json();
+    const { name, email, password, companyName } = await req.json();
 
-    // Validate input
     if (!name || !email || !password || !companyName) {
       return NextResponse.json(
         { error: 'Todos los campos son requeridos' },
@@ -78,8 +28,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = mockUsers.find(u => u.email === email);
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (existingUser) {
       return NextResponse.json(
         { error: 'Ya existe una cuenta con este email' },
@@ -87,60 +39,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new company
     const companySlug = generateSlug(companyName);
-    const newCompany = {
-      id: String(mockCompanies.length + 1),
-      name: companyName,
-      slug: companySlug,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
 
-    // Create new user
-    const hashedPassword = await hashPassword(password);
-    const newUser = {
-      id: String(mockUsers.length + 1),
-      name,
-      email,
-      password: hashedPassword,
-      role: 'ADMIN',
-      companyId: newCompany.id,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    // Save to mock data
-    mockCompanies.push(newCompany);
-    mockUsers.push(newUser);
-
-    // Generate token
-    const token = generateToken(newUser.id, newUser.companyId);
-
-    // Create response and set cookie
-    const response = NextResponse.json({
-      token,
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        companyId: newUser.companyId
+    const company = await prisma.company.create({
+      data: {
+        name: companyName,
+        slug: companySlug,
       },
-      companySlug: newCompany.slug
     });
-    
-    // Set auth token cookie
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'ADMIN',
+        companyId: company.id,
+      },
+    });
+
+    const token = await new SignJWT({
+      companyId: company.id,
+      role: user.role,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(user.id) 
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(secret);
+
+    const response = NextResponse.json(
+      {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          companyId: user.companyId,
+        },
+        companySlug: company.slug,
+      },
+      { status: 201 }
+    );
+
     response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60, // 24 hours
-      path: '/'
+      maxAge: 60 * 60 * 24, 
+      path: '/',
     });
-    
-    return response;
 
+    return response;
   } catch (error) {
     console.error('Register error:', error);
     return NextResponse.json(

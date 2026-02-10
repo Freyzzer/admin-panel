@@ -6,7 +6,19 @@ export type PaymentMethod = "CASH" | "TRANSFER" | "CARD" | "NEQUI" | "DAVIPLATA"
 
 export type UserRole = "ADMIN" | "STAFF";
 
-export type Plan = "Basic" | "Pro" | "Premium";
+export type Plan = string; // Plan names are stored as strings in database
+
+export type SubscriptionPlan = 
+  | "Netflix Básico"
+  | "Netflix Estándar"
+  | "Netflix Premium"
+  | "Disney+ Premium"
+  | "HBO Max"
+  | "Amazon Prime Video"
+  | "Apple TV+"
+  | "Combo Netflix + Disney"
+  | "Paramount+ + Showtime"
+  | "Netflix Premium Anual" ;
 
 export interface Client {
   id: string;
@@ -15,7 +27,10 @@ export interface Client {
   phone: string;
   company: Company;
   status: ClientStatus;
-  plan: Plan;
+  plan: PlanDetailed;
+  planId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ClientDetailed {
@@ -67,7 +82,7 @@ export interface ChartDataPoint {
 
 export interface PlanDetailed {
   id: string;
-  name: Plan;
+  name: SubscriptionPlan;
   price: number; // Convertido desde Decimal para el frontend
   interval: string;
   companyId: string;
@@ -108,4 +123,14 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+}
+
+export interface PlanDetailed{
+  id: string;
+  companyId: string;
+  createdAt: string;
+  interval: string;
+  name: SubscriptionPlan;
+  amount: number;
+  updatedAt: string;
 }

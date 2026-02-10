@@ -2,16 +2,15 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, User, Calendar, Mail, Phone, CreditCard } from "lucide-react";
+import { ArrowLeft, User, Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClient } from "@/hooks/useClients";
 import { ClientStatusBadge, PlanBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/calculate";
-import type { Client, ClientDetailed, ClientStatus, Plan } from "@/lib/types";
+import type { ClientDetailed, ClientStatus } from "@/lib/types";
 
 interface ClientDetailPageProps {
   params: Promise<{ id: string }>;
@@ -28,11 +27,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
     const fetchClient = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/clients/${id}`, {
-          headers: {
-            'Id': id
-          }
-        });
+        const response = await fetch(`/api/clients/${id}`);
         if (!response.ok) {
           throw new Error("Failed to fetch client data");
         }
@@ -52,19 +47,6 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
     await updateClientStatus(newStatus);
   };
 
-  // if (!isAuthenticated) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen">
-  //       <div className="text-center">
-  //         <h1 className="text-2xl font-bold text-gray-900 mb-4">Unauthorized</h1>
-  //         <p className="text-gray-600 mb-4">Please log in to view client details.</p>
-  //         <Link href="/login">
-  //           <Button>Go to Login</Button>
-  //         </Link>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   if (loading) {
     return (
