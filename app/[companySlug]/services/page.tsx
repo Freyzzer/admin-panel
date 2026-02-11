@@ -28,7 +28,6 @@ export default function ServicesPage() {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        console.log(user);
         const response = await fetch("/api/services");
         if (!response.ok) {
           console.error("Failed to fetch services");
@@ -62,25 +61,43 @@ export default function ServicesPage() {
     interval: string;
     price: number;
   }) => {
-    if (selectedService) {
-      // EDITAR
-      await fetch(`/api/services?id=${selectedService.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-    } else {
-      // CREAR
-      await fetch("/api/services", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data
-        }),
-      });
-    }
+    try {
+      let response;
+      if (selectedService) {
+        // EDITAR
+        response = await fetch(`/api/services?id=${selectedService.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+      } else {
+        // CREAR
+        response = await fetch("/api/services", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...data
+          }),
+        });
+      }
 
-    setOpenModal(false);
+      if (!response.ok) {
+        throw new Error(selectedService ? "Error al editar el servicio" : "Error al crear el servicio");
+      }
+
+      // Recargar los servicios después de la operación
+      const fetchResponse = await fetch("/api/services");
+      if (fetchResponse.ok) {
+        const updatedServices = await fetchResponse.json();
+        setServices(updatedServices);
+      }
+
+      setOpenModal(false);
+      setSelectedService(null);
+    } catch (error) {
+      console.error("Error en handleSubmit:", error);
+      // Aquí podrías agregar un toast o notificación de error
+    }
   };
 
   return (
@@ -96,7 +113,10 @@ title="Planes"
       />
       <ServiceModal
         open={openModal}
-        onClose={() => setOpenModal(false)}
+        onClose={() => {
+          setOpenModal(false);
+          setSelectedService(null);
+        }}
         service={selectedService}
         onSubmit={handleSubmit}
       />

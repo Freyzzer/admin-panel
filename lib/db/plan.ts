@@ -17,6 +17,24 @@ export const getAllPlanByCompany = async (id:string) => {
     }
 }
 
+export const getAllPlanNamesByCompany = async (id:string) => {
+    try{
+        const data = await prisma.plan.findMany({
+            where: {
+                companyId: id,
+            },
+            select:{
+                id:true,
+                name:true
+            }
+            })
+        return data;
+    } catch (error) {
+        console.error("Error fetching Plan:", error);
+        throw error;
+    }
+}
+
 export const CreatePlan = async (name:string, interval:string, price:number, companyId:string) => {
     try{
         const data = await prisma.plan.create({

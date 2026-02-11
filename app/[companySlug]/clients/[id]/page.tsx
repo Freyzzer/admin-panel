@@ -2,15 +2,25 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, User, Mail, Phone } from "lucide-react";
+import { ArrowLeft, User, Mail, Phone} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClient } from "@/hooks/useClients";
 import { ClientStatusBadge, PlanBadge } from "@/components/ui/status-badge";
-import { formatCurrency } from "@/lib/calculate";
-import type { ClientDetailed, ClientStatus } from "@/lib/types";
+import { formatCurrency, formatDate } from "@/lib/calculate";
+import type { ClientDetailed, ClientStatus, Payment } from "@/lib/types";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface ClientDetailPageProps {
   params: Promise<{ id: string }>;
@@ -19,9 +29,11 @@ interface ClientDetailPageProps {
 export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const { id } = use(params);
   const [client, setClient] = useState<ClientDetailed>();
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingPayments, setLoadingPayments] = useState<boolean>(true);
+  const router = useRouter();
   
-  const { updateClientStatus } = useClient(id);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -42,11 +54,71 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
     fetchClient();
   }, [id]);
 
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        setLoadingPayments(true);
+        const response = await fetch(`/api/payments/${id}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch client payments");
+        }
+        const data = await response.json();
+        setPayments(data);
+      } catch (error) {
+        console.error("Error fetching client payments:", error);
+      } finally {
+        setLoadingPayments(false);
+      }
+    };
+    fetchPayments();
+  }, [id]);
+
 
   const handleStatusUpdate = async (newStatus: ClientStatus) => {
-    await updateClientStatus(newStatus);
+    try {
+      const response = await fetch(`/api/clients/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update client status');
+      }
+      const result = await response.json();
+      if (result.success) {
+        setClient(prev => prev ? { ...prev, status: newStatus } : prev);
+      }
+      toast.success(`Client status updated to ${newStatus}`);
+      router.refresh();
+    } catch (error) {
+      console.error('Error updating client status:', error);
+    }
   };
 
+  // Calculate next payment date based on last payment
+  const calculateNextPaymentDate = () => {
+    if (payments.length === 0) return null;
+    
+    const lastPayment = payments[0]; // Most recent payment (sorted in API)
+    if (!lastPayment.paidAt) return null;
+    
+    const lastPaymentDate = new Date(lastPayment.paidAt);
+    const interval = client?.plan?.interval || 'monthly';
+    
+    // Add interval to last payment date
+    const nextDate = new Date(lastPaymentDate);
+    if (interval === 'monthly' || interval === 'month') {
+      nextDate.setMonth(nextDate.getMonth() + 1);
+    } else if (interval === 'yearly' || interval === 'year') {
+      nextDate.setFullYear(nextDate.getFullYear() + 1);
+    }
+    
+    return nextDate;
+  };
+
+  const nextPaymentDate = calculateNextPaymentDate();
 
   if (loading) {
     return (
@@ -156,7 +228,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
               <div>
                 <label className="text-sm font-medium text-gray-700">Precio</label>
                 <p className="text-sm text-gray-900 font-bold">
-                  {client?.plan?.price ? formatCurrency(client?.plan?.price) + "/month" : "N/A"}
+                  {client?.plan?.price ? formatCurrency(Number(client?.plan?.price)) + "/month" : "N/A"}
                 </p>
               </div>
             </div>
@@ -166,6 +238,29 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
             </div>
           </CardContent>
         </Card>
+
+      {/* Payment Information */}
+      <Card className="col-span-2">
+        <CardHeader>
+          <CardTitle>Información de Pagos</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Próxima Fecha de Pago</label>
+              <p className="text-sm text-gray-900 font-semibold">
+                {nextPaymentDate ? formatDate(nextPaymentDate.toString()) : 'No disponible'}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Total Pagado</label>
+              <p className="text-sm text-gray-900 font-semibold">
+                {formatCurrency(payments.reduce((sum, p) => sum + Number(p.amount), 0))}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Actions */}
       <Card className="col-span-2">
@@ -207,6 +302,66 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
               <p>Last updated: {client?.updatedAt}</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment History */}
+      <Card className="col-span-2">
+        <CardHeader>
+          <CardTitle>Historial de Pagos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingPayments ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : payments.length === 0 ? (
+            <p className="text-center text-gray-500 py-4">No hay pagos registrados</p>
+          ) : (
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha de Pago</TableHead>
+                    <TableHead>Monto</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell>
+                        {payment.paidAt ? formatDate(payment.paidAt.toString()) : 'N/A'}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {formatCurrency(Number(payment.amount))}
+                      </TableCell>
+                      <TableCell>
+                        {payment.method === 'CASH' ? 'Efectivo' :
+                         payment.method === 'TRANSFER' ? 'Transferencia' :
+                         payment.method === 'CARD' ? 'Tarjeta' :
+                         payment.method === 'NEQUI' ? 'Nequi' :
+                         payment.method === 'DAVIPLATA' ? 'Daviplata' : payment.method}
+                      </TableCell>
+                      <TableCell>
+                        {payment.status === 'PAID' ? 'Pagado' :
+                         payment.status === 'PENDING' ? 'Pendiente' :
+                         payment.status === 'OVERDUE' ? 'Vencido' : payment.status}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
       </div>

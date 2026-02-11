@@ -51,6 +51,10 @@ export default function LoginPage() {
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Ingresa tus credenciales para acceder
         </p>
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-xs text-blue-800 font-medium">Credenciales de prueba:</p>
+          <p className="text-xs text-blue-700">Admin: admin@streamingcolombia.com / admin123456</p>
+        </div>
       </div>
       
       <form className="mt-6 space-y-6" onSubmit={handleSubmit}>

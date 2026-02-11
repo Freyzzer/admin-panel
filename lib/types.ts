@@ -1,3 +1,5 @@
+import { Decimal } from "@/app/generated/prisma/internal/prismaNamespace";
+
 export type ClientStatus = "ACTIVE" | "PENDING" | "SUSPENDED" | "CANCELLED";
 
 export type PaymentStatus = "PAID" | "PENDING" | "OVERDUE";
@@ -82,12 +84,12 @@ export interface ChartDataPoint {
 
 export interface PlanDetailed {
   id: string;
-  name: SubscriptionPlan;
-  price: number; // Convertido desde Decimal para el frontend
+  name: string;
+  price: number; 
   interval: string;
   companyId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Company {
@@ -123,14 +125,4 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
-}
-
-export interface PlanDetailed{
-  id: string;
-  companyId: string;
-  createdAt: string;
-  interval: string;
-  name: SubscriptionPlan;
-  amount: number;
-  updatedAt: string;
 }

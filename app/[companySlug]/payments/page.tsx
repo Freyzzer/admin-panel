@@ -15,31 +15,37 @@ export default function PaymentsPage({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const user = useAuthStore((state) => state.user);
   
-  useEffect(() => {
-    const fetchPayments = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/payments');
+  const fetchPayments = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/payments');
 
-        if (!response.ok) {
-          console.error('Failed to fetch payments');
-          return;
-        }
-
-        const data = await response.json();
-        setPayments(data);
-      } catch (error) {
-        console.error('Error fetching payments:', error);
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        console.error('Failed to fetch payments');
+        return;
       }
-    };
+
+      const data = await response.json();
+      setPayments(data);
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchPayments();
   }, [user]);
 
   return (
     <DashboardLayout title="Pagos" description="Seguimiento y gestión de todas las transacciones de pago">
-      <PaymentsTable payments={payments} isLoading={isLoading} />
+      <PaymentsTable 
+        payments={payments} 
+        isLoading={isLoading} 
+        companyId={user?.companyId}
+        onPaymentCreated={fetchPayments}
+      />
     </DashboardLayout>
   );
 }

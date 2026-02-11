@@ -33,7 +33,7 @@ export default function ServiceModal({
     if (service) {
       setName(service.name);
       setInterval(service.interval);
-      setPrice(service.price);
+      setPrice(Number(service.price));
     } else {
       setName("");
       setInterval("");

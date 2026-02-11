@@ -76,7 +76,7 @@ export function PaymentFilters({
       {/* Filtros principales siempre visibles */}
       <div className="flex flex-wrap gap-2 items-center">
         {/* Búsqueda */}
-        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+        <div className="relative flex-1 min-w-50 max-w-75">
           <Input
             placeholder="Buscar por cliente..."
             value={filters.search}
@@ -258,38 +258,7 @@ export function PaymentFilters({
               )}
             </Button>
           </div>
-        )}
-      </div>
-
-      {/* Resumen de filtros activos */}
-      {hasActiveFilters && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Mostrando resultados con:</span>
-          <div className="flex gap-1">
-            {filters.search && (
-              <Badge variant="secondary">Búsqueda</Badge>
-            )}
-            {filters.status !== "all" && (
-              <Badge variant="secondary">Estado</Badge>
-            )}
-            {filters.method !== "all" && (
-              <Badge variant="secondary">Método</Badge>
-            )}
-            {(filters.amountRange.min || filters.amountRange.max) && (
-              <Badge variant="secondary">Monto</Badge>
-            )}
-            {(filters.dateRange.from || filters.dateRange.to) && (
-              <Badge variant="secondary">Fechas</Badge>
-            )}
-            {filters.clientId !== "all" && (
-              <Badge variant="secondary">Cliente</Badge>
-            )}
-          </div>
-          <Button variant="ghost" size="sm" onClick={onReset}>
-            <X className="h-3 w-3" />
-          </Button>
+          )}
         </div>
-      )}
-    </div>
   );
 }

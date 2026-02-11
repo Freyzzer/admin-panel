@@ -28,6 +28,7 @@ import type { Payment, PaymentStatus, PaymentMethod } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/calculate";
 import { PlanBadge } from "@/components/ui/status-badge";
 import { PaymentFilters, type PaymentFiltersState } from "./payment-filters";
+import { AddPaymentDialog } from "./add-payment-dialog";
 
 // Helper function to get payment method labels
 const getPaymentMethodLabel = (method: PaymentMethod): string => {
@@ -44,9 +45,11 @@ const getPaymentMethodLabel = (method: PaymentMethod): string => {
 interface PaymentsTableProps {
   payments: Payment[];
   isLoading?: boolean;
+  companyId?: string;
+  onPaymentCreated?: () => void;
 }
 
-export function PaymentsTable({ payments, isLoading = false }: PaymentsTableProps) {
+export function PaymentsTable({ payments, isLoading = false, companyId, onPaymentCreated }: PaymentsTableProps) {
   const [filters, setFilters] = useState<PaymentFiltersState>({
     search: "",
     status: "all",
@@ -64,36 +67,46 @@ export function PaymentsTable({ payments, isLoading = false }: PaymentsTableProp
   }, [filters.search, filters.status, filters.method, filters.amountRange, filters.dateRange, filters.clientId]);
 
   const filteredPayments = useMemo(() => {
-    return payments.filter((payment) => {
-      // Búsqueda por nombre de cliente
-      const matchesSearch = !filters.search || 
-        payment.client.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        payment.client.email.toLowerCase().includes(filters.search.toLowerCase());
+    return payments
+      .filter((payment) => {
+        // Solo mostrar pagos que están en estado PAID
+        if (payment.status !== "PAID") return false;
 
-      // Estado
-      const matchesStatus = filters.status === "all" || payment.client.status === filters.status;
+        // Búsqueda por nombre de cliente
+        const matchesSearch = !filters.search || 
+          payment.client.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+          payment.client.email.toLowerCase().includes(filters.search.toLowerCase());
 
-      // Método de pago
-      const matchesMethod = filters.method === "all" || payment.method === filters.method;
+        // Estado del cliente (no del pago)
+        const matchesStatus = filters.status === "all" || payment.client.status === filters.status;
 
-      // Rango de montos
-      const matchesAmountRange = (!filters.amountRange.min && !filters.amountRange.max) ||
-        (payment.amount >= Number(filters.amountRange.min || 0) && 
-         payment.amount <= Number(filters.amountRange.max || Infinity));
+        // Método de pago
+        const matchesMethod = filters.method === "all" || payment.method === filters.method;
 
-      // Rango de fechas
-      const paymentDate = payment.paidAt ? new Date(payment.paidAt) : new Date(payment.createdAt);
-      const matchesDateRange = (!filters.dateRange.from && !filters.dateRange.to) ||
-        (paymentDate >= new Date(filters.dateRange.from) &&
-         paymentDate <= new Date(filters.dateRange.to));
+        // Rango de montos
+        const matchesAmountRange = (!filters.amountRange.min && !filters.amountRange.max) ||
+          (payment.amount >= Number(filters.amountRange.min || 0) && 
+           payment.amount <= Number(filters.amountRange.max || Infinity));
 
-      // Cliente específico
-      const matchesClient = filters.clientId === "all" || 
-        payment.client.name.toLowerCase().includes(filters.clientId.toLowerCase()) ||
-        payment.client.email.toLowerCase().includes(filters.clientId.toLowerCase());
+        // Rango de fechas
+        const paymentDate = payment.paidAt ? new Date(payment.paidAt) : new Date(payment.createdAt);
+        const matchesDateRange = (!filters.dateRange.from && !filters.dateRange.to) ||
+          (paymentDate >= new Date(filters.dateRange.from) &&
+           paymentDate <= new Date(filters.dateRange.to));
 
-      return matchesSearch && matchesStatus && matchesMethod && matchesAmountRange && matchesDateRange && matchesClient;
-    });
+        // Cliente específico
+        const matchesClient = filters.clientId === "all" || 
+          payment.client.name.toLowerCase().includes(filters.clientId.toLowerCase()) ||
+          payment.client.email.toLowerCase().includes(filters.clientId.toLowerCase());
+
+        return matchesSearch && matchesStatus && matchesMethod && matchesAmountRange && matchesDateRange && matchesClient;
+      })
+      .sort((a, b) => {
+        // Ordenar por fecha de pago más reciente (paidAt si existe, sino createdAt)
+        const dateA = a.paidAt ? new Date(a.paidAt) : new Date(a.createdAt);
+        const dateB = b.paidAt ? new Date(b.paidAt) : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
   }, [payments, filters]);
 
   const paginatedPayments = useMemo(() => {
@@ -146,34 +159,25 @@ export function PaymentsTable({ payments, isLoading = false }: PaymentsTableProp
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-lg font-semibold">All Payments</CardTitle>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar por cliente..."
-                value={filters.search}
-                onChange={(e) => handleFiltersChange({...filters, search: e.target.value})}
-                className="w-full pl-9 sm:w-64"
-              />
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-lg font-semibold">Pagos Realizados</CardTitle>
+            <div className="text-sm text-muted-foreground">
+              Mostrando solo pagos confirmados
             </div>
-            <Select
-              value={filters.status}
-              onValueChange={(value) => handleFiltersChange({...filters, status: value as PaymentStatus | "all"})}
-            >
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Filtrar por estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="PAID">Pagado</SelectItem>
-                <SelectItem value="PENDING">Pendiente</SelectItem>
-                <SelectItem value="OVERDUE">Vencido</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
+          {companyId && (
+            <AddPaymentDialog 
+              companyId={companyId} 
+              onPaymentCreated={onPaymentCreated}
+            />
+          )}
         </div>
+        <PaymentFilters
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          onReset={handleResetFilters}
+          activeFiltersCount={getActiveFiltersCount()}
+        />
       </CardHeader>
     <CardContent>
           <div className="rounded-lg border">
@@ -181,17 +185,17 @@ export function PaymentsTable({ payments, isLoading = false }: PaymentsTableProp
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Monto</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Método</TableHead>
-                  </TableRow>
+                  <TableHead>Fecha de Pago</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Método</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
               {filteredPayments.length === 0 ? (
                  <TableRow>
-                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                     No payments found
+                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                     No se encontraron pagos realizados con los filtros aplicados
                    </TableCell>
                  </TableRow>
                ) : (
@@ -199,7 +203,7 @@ export function PaymentsTable({ payments, isLoading = false }: PaymentsTableProp
                   <TableRow key={payment.id}>
                     <TableCell>
                       <Link
-                        href={`/clients/${payment.clientId}`}
+                        href={`../clients/${payment.clientId}`}
                         className="flex items-center gap-3 hover:underline"
                       >
                         <Avatar className="h-8 w-8">
@@ -210,23 +214,25 @@ export function PaymentsTable({ payments, isLoading = false }: PaymentsTableProp
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{payment.client.name}</span>
+                        <div>
+                          <span className="font-medium">{payment.client.name}</span>
+                          <div className="text-sm text-muted-foreground">{payment.client.email}</div>
+                        </div>
                       </Link>
                     </TableCell>
-                     <TableCell className="text-muted-foreground">
-                       {formatDate(payment.createdAt.toString())}
-                     </TableCell>
-                     <TableCell className="hidden md:table-cell">
-                       <PlanBadge plan={payment.client.plan?.name} />
-                     </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {getPaymentMethodLabel(payment.method)}
-                      </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {payment.paidAt ? formatDate(payment.paidAt.toString()) : formatDate(payment.createdAt.toString())}
+                    </TableCell>
                     <TableCell>
-                      <PaymentStatusBadge status={payment.status} />
+                      <PlanBadge plan={payment.client.plan?.name} />
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {getPaymentMethodLabel(payment.method)}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {formatCurrency(payment.client.plan.price)}
+                      {formatCurrency(Number(payment.client.plan.price))}
                     </TableCell>
                   </TableRow>
                 ))
@@ -238,7 +244,7 @@ export function PaymentsTable({ payments, isLoading = false }: PaymentsTableProp
           <>
             <div className="mt-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Showing {paginatedPayments.length} of {filteredPayments.length} payments
+                Mostrando {paginatedPayments.length} de {filteredPayments.length} pagos realizados
               </div>
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
