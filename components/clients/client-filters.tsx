@@ -74,7 +74,7 @@ export function ClientFilters({
       {/* Filtros principales siempre visibles */}
       <div className="flex flex-wrap gap-2 items-center">
         {/* Búsqueda */}
-        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+        <div className="relative flex-1 min-w-50 max-w-75">
           <Input
             placeholder="Buscar por nombre, email..."
             value={filters.search}

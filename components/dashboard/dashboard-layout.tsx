@@ -5,6 +5,7 @@ import React, { useEffect } from "react"
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { useAuthStore } from "@/store/auth-store";
+import { Toaster } from "sonner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -33,6 +34,7 @@ export function DashboardLayout({
         <Header title={title} description={description} />
         <main className="p-6">{children}</main>
       </div>
+      <Toaster />
     </div>
   );
 }

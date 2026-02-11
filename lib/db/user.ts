@@ -68,3 +68,46 @@ export const getClientsPendingByCompany = async (id:string) => {
         throw error;
     }
 }
+
+export const getClientsWithPendingPayments = async (companyId: string) => {
+    try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const clientsWithPendingPayments = await prisma.client.findMany({
+            where: {
+                companyId: companyId,
+                status: ClientStatus.ACTIVE,
+                OR: [
+                    { payments: { none: {} } }, // Clientes sin pagos
+                    { 
+                        payments: {
+                            some: {
+                                paidAt: {
+                                    lt: thirtyDaysAgo
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            include: {
+                plan: true,
+                payments: {
+                    where: {
+                        status: "PAID"
+                    },
+                    orderBy: {
+                        paidAt: 'desc'
+                    },
+                    take: 1
+                }
+            }
+        });
+
+        return clientsWithPendingPayments;
+    } catch (error) {
+        console.error("Error fetching clients with pending payments:", error);
+        throw error;
+    }
+}
