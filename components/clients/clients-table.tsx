@@ -2,16 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search, Eye, Pencil, MoreHorizontal, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Eye, Pencil, MoreHorizontal, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -29,9 +21,10 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientStatusBadge, PlanBadge } from "@/components/ui/status-badge";
-import type { Client, ClientStatus } from "@/lib/types";
+import type { Client } from "@/lib/types";
 import { ClientFilters, type ClientFiltersState } from "./client-filters";
 import ClientsTableSkeleton from "./clients-table-skeleton";
+import { EditClientDialog } from "./edit-client-dialog";
 
 interface ClientsTableProps {
   clients: Client[];
@@ -48,39 +41,36 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
     planPriceRange: { min: "", max: "" },
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const itemsPerPage = 10;
 
-  // Reset currentPage when filters change
+
   useEffect(() => {
     setCurrentPage(1);
   }, [filters.search, filters.status, filters.planId, filters.registrationDateRange, filters.planPriceRange]);
 
   const filteredClients = useMemo(() => {
-    return clients.filter((client) => {
-      // Búsqueda
-      const matchesSearch = !filters.search || 
-        client.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        client.email.toLowerCase().includes(filters.search.toLowerCase());
+    return clients
+      .filter((client) => {
 
-      // Estado
-      const matchesStatus = filters.status === "all" || client.status === filters.status;
+        const matchesSearch = !filters.search || 
+          client.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+          client.email.toLowerCase().includes(filters.search.toLowerCase());
 
-      // Plan
-      const matchesPlan = filters.planId === "all" || client.plan.name === filters.planId;
+        const matchesStatus = filters.status === "all" || client.status === filters.status;
 
-      // Rango de fechas de registro
-      const clientDate = new Date(client.createdAt);
-      const matchesDateRange = (!filters.registrationDateRange.from && !filters.registrationDateRange.to) ||
-        (clientDate >= new Date(filters.registrationDateRange.from || '1900-01-01') && 
-         clientDate <= new Date(filters.registrationDateRange.to || '2100-12-31'));
+        const matchesPlan = filters.planId === "all" || client.plan.name === filters.planId;
 
-      // Rango de precios
-      const matchesPriceRange = (!filters.planPriceRange.min && !filters.planPriceRange.max) ||
-        (client.plan.price >= Number(filters.planPriceRange.min || 0) && 
-         client.plan.price <= Number(filters.planPriceRange.max || Infinity));
+        const clientDate = new Date(client.createdAt);
+        const matchesDateRange = (!filters.registrationDateRange.from && !filters.registrationDateRange.to) ||
+          (clientDate >= new Date(filters.registrationDateRange.from || '1900-01-01') && 
+           clientDate <= new Date(filters.registrationDateRange.to || '2100-12-31'));
 
-      return matchesSearch && matchesStatus && matchesPlan && matchesDateRange && matchesPriceRange;
-    });
+
+        return matchesSearch && matchesStatus && matchesPlan && matchesDateRange ;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [clients, filters]);
 
   const paginatedClients = useMemo(() => {
@@ -125,7 +115,7 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
 
   return (
     <div className="space-y-4">
-      {/* Componente de Filtros */}
+
       <ClientFilters
         filters={filters}
         onFiltersChange={handleFiltersChange}
@@ -133,7 +123,6 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
         activeFiltersCount={getActiveFiltersCount()}
       />
 
-      {/* Tabla de Clientes */}
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -213,10 +202,15 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
                                Ver Detalles
                              </Link>
                            </DropdownMenuItem>
-                           <DropdownMenuItem>
-                             <Pencil className="mr-2 h-4 w-4" />
-                             Editar Cliente
-                           </DropdownMenuItem>
+                           <DropdownMenuItem
+                            onClick={() => {
+                              setEditingClient(client);
+                              setIsEditOpen(true);
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar Cliente
+                          </DropdownMenuItem>
                          </DropdownMenuContent>
                        </DropdownMenu>
                      </TableCell>
@@ -272,6 +266,17 @@ export function ClientsTable({ clients, isLoading = false, slug }: ClientsTableP
           )}
         </CardContent>
       </Card>
+
+      <EditClientDialog
+        open={isEditOpen}
+        onOpenChange={(open) => {
+          setIsEditOpen(open);
+          if (!open) {
+            setEditingClient(null);
+          }
+        }}
+        client={editingClient}
+        />
     </div>
   );
 }

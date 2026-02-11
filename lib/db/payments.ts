@@ -73,3 +73,40 @@ export const getMonthly = async (id:string) => {
         console.error('fallo', e)
     }
 }
+
+export const createPayment = async (clientId: string, companyId: string, method: "CASH" | "TRANSFER" | "CARD" | "NEQUI" | "DAVIPLATA") => {
+    try {
+        const client = await prisma.client.findUnique({
+            where: { id: clientId },
+            include: { plan: true }
+        });
+
+        if (!client || !client.plan) {
+            throw new Error('Client or plan not found');
+        }
+
+        const payment = await prisma.payment.create({
+            data: {
+                clientId: clientId,
+                companyId: companyId,
+                amount: client.plan.price,
+                method: method,
+                status: PaymentStatus.PAID,
+                paidAt: new Date()
+            },
+            include: {
+                client: {
+                    include: {
+                        plan: true,
+                        company: true
+                    }
+                }
+            }
+        });
+
+        return payment;
+    } catch (error) {
+        console.error("Error creating payment:", error);
+        throw error;
+    }
+}
